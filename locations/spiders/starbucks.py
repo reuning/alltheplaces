@@ -4,10 +4,11 @@ import json
 import scrapy
 
 from locations.items import GeojsonPointItem
+from math import sqrt
 
 HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 STORELOCATOR = "https://www.starbucks.com/bff/locations?lat={}&lng={}"
-
+CIRCLE_MULT = (sqrt(2)/2)
 
 class StarbucksSpider(scrapy.Spider):
     name = "starbucks"
@@ -75,12 +76,17 @@ class StarbucksSpider(scrapy.Spider):
         if paging["returned"] > 0 and paging["limit"] == paging["returned"]:
             if response.meta["distance"] > 0.15:
                 nextDistance = response.meta["distance"] / 2
-                # Create four new coordinate pairs
+                nextDistanceCorner = nextDistance * CIRCLE_MULT
+                # Create eight new coordinate pairs
                 nextCoordinates = [
-                    [center[0] - nextDistance, center[1] + nextDistance],
-                    [center[0] + nextDistance, center[1] + nextDistance],
-                    [center[0] - nextDistance, center[1] - nextDistance],
-                    [center[0] + nextDistance, center[1] - nextDistance],
+                    [center[0] - nextDistanceCorner, center[1] + nextDistanceCorner],
+                    [center[0] + nextDistanceCorner, center[1] + nextDistanceCorner],
+                    [center[0] - nextDistanceCorner, center[1] - nextDistanceCorner],
+                    [center[0] + nextDistanceCorner, center[1] - nextDistanceCorner],
+                    [center[0] - nextDistance, center[1]],
+                    [center[0] + nextDistance, center[1]],
+                    [center[0], center[1] - nextDistance],
+                    [center[0], center[1] + nextDistance],
                 ]
                 urls = [STORELOCATOR.format(c[1], c[0]) for c in nextCoordinates]
                 for url in urls:
